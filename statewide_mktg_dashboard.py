@@ -72,7 +72,7 @@ property_campaigns_list = [\
                            'Greenville Medical Properties',\
                            'Greenville Office Properties',\
                            'Greenville Retail Properties']
-special_campaign_type = lambda c: c if (c in property_campaigns_list) or (c == 'Internal Newsletters 2018') or (c == 'Market Reports - 2018') else 'Custom Special Campaigns'
+special_campaign_type = lambda c: c if (c in property_campaigns_list) or ('Internal Newsletters' in str(c)) or ('Market Reports' in str(c)) else 'Custom Special Campaigns'
 open_rate_calc = lambda row: round((row.Opened/row.Sent*100),1) if row.Sent > 1 else 0
 click_rate_calc = lambda row: round((row.Clicked/row.Sent*100),2) if row.Sent > 1 else 0
 sent_perc_change = lambda row: int((row.Sent - row.Prev_Sent)/(row.Prev_Sent)*100) if row.Prev_Sent > 0 else 100
@@ -161,6 +161,34 @@ def outer_white_circle(radius,perc):
 def outer_perc_change_wedge(radius,perc):
     return Wedge((.5,.5), radius, outer_theta1(perc), outer_theta2(perc), color=patch_color(perc), alpha=outer_alpha(perc))
 
+def hs_page_type(p):
+    if 'sign-up' in p:
+        return 'Sign-Up'
+    elif 'subscriptions' in p:
+        return 'Sign-Up'
+    elif 'report' in p:
+        return 'Research'
+    else:
+        return 'Landing'
+      
+def proposal_outcome(row):
+    if row.Status == 'WIN':
+        return 'Won'
+    elif row.Status == 'LOSS':
+        return 'Lost'
+    elif row.Status == "PULLED":
+        return 'Pulled'
+    else:
+        return 'Outstanding'
+
+def outcomes_output(value):
+  try:
+    return grouped_proposals.loc[grouped_proposals['Outcome'] == value, 'Proposals'].item()
+  except IndexError:
+    return 0
+  except ValueError:
+    return 0
+
 # Get the file links for the social icons
 twitterEPS = cwd + '\\twitter.eps'
 facebookEPS = cwd + '\\facebook.eps'
@@ -171,20 +199,21 @@ emails_csv = inputs_df.iloc[0]['CSV File Name or Numbers']
 while '.csv' not in emails_csv:
     emails_csv = input('Please provide the name of the CSV file, including the .csv, for the two months of email data being compared: ')
 emails_df = pd.read_csv(emails_csv)
+emails_df = emails_df[emails_df.Sent > 1]
 emails_df = emails_df.rename(columns={'Send Date (Your time zone)':'Send Date'})
 emails_df['Send Date'] = pd.to_datetime(emails_df['Send Date'])
 emails_df['Send Month'] = emails_df['Send Date'].dt.month
 emails_df['Send Year'] = emails_df['Send Date'].dt.year
-if emails_df['Send Month'].max() == 12 & emails_df['Send Month'].min() == 1:
+if emails_df['Send Date'].max().month == 1:
     rec_month = 1
     prev_month = 12
 else:
-    rec_month = emails_df['Send Month'].max()
-    prev_month = emails_df['Send Month'].min()
+    rec_month = emails_df['Send Date'].max().month
+    prev_month = rec_month - 1
 recent_month_name = month_number[rec_month]
 recent_mo = mo_num[rec_month]
 prev_mo = mo_num[prev_month]
-recent_yr = emails_df['Send Year'].max()
+recent_yr = emails_df['Send Date'].max().year
 
 # ALL THE INDESIGNNNNNNNNNN
 # open InDesign and create a new document
@@ -490,12 +519,12 @@ geo_bounds_misc['socialTableText'] = ["3.3735i","0.26i","5.7768i","5.6i"]
 geo_bounds_misc['websiteFrame'] = ["0.5422i","5.3479i","3.6394i","8.4451i"]
 geo_bounds_misc['websiteCirNum'] = ["1.7259i","6.3318i","2.0021i","7.489i"]
 geo_bounds_misc['websiteCirText'] = ["2.0846i","6.3318i","2.4864i","7.489i"]
-geo_bounds_misc['campaignTableText'] = ["0.7762i","8.2787i","4.0896i","10.6213i"]
+geo_bounds_misc['campaignTableText'] = ["0.7762i","8.4498i","4.0896i","10.74i"]
 geo_bounds_misc['pagesTableText'] = ["3.5466i","5.7598i","5.7768i","8.1096i"]
-geo_bounds_misc['propSubText'] = ["4.287i","8.5313i","4.6215i","10.3688i"]
-geo_bounds_misc['propSubHdg'] = ["4.62i","8.5313i","4.9571i","10.3688i"]
-geo_bounds_misc['resSubText'] = ["5.1066i","8.5313i","5.4412i","10.3688i"]
-geo_bounds_misc['resSubHdg'] = ["5.4397i","8.5313i","5.7768i","10.3688i"]
+geo_bounds_misc['propSubText'] = ["4.287i","8.6625i","4.6215i","10.5i"]
+geo_bounds_misc['propSubHdg'] = ["4.62i","8.6625i","4.9571i","10.5i"]
+geo_bounds_misc['resSubText'] = ["5.1066i","8.6625i","5.4412i","10.5i"]
+geo_bounds_misc['resSubHdg'] = ["5.4397i","8.6625i","5.7768i","10.5i"]
 geo_bounds_misc['opensText'] = ["9.1702i","0.2292i","9.5047i","1.3234i"]
 geo_bounds_misc['opensHdg'] = ["9.5033i","0.2292i","9.66i","1.3234i"]
 geo_bounds_misc['openRateText'] = ["9.1702i","1.6133i","9.5047i","2.7075i"]
@@ -505,13 +534,27 @@ geo_bounds_misc['clicksHdg'] = ["9.5033i","2.9974i","9.66i","4.0916i"]
 geo_bounds_misc['clickRateText'] = ["9.1702i","4.3814i","9.5047i","5.4757i"]
 geo_bounds_misc['clickRateHdg'] = ["9.5033i","4.3814i","9.66i","5.4757i"]
 geo_bounds_misc['emailsTableText'] = ["9.894i","0.25i","12.1819i","6.107i"]
-geo_bounds_misc['companyEmailsFrame'] = ["8.45i","6.25i","12.45i","10.25i"]
+geo_bounds_misc['companyEmailsFrame'] = ["8.45i","6.1458i","12.45i","10.3542i"]
 geo_bounds_misc['companyEmailsCirNum'] = ["10.0912i","7.6768i","10.4131i","8.834i"]
 geo_bounds_misc['companyEmailsCirText'] = ["10.4499i","7.8581i","10.8795i","8.6527i"]
 geo_bounds_misc['companyEmailsArrow'] = ["9.5926i","10.3334i","9.9896i","10.3334i"]
 geo_bounds_misc['companyEmailsPercChanged'] = ["10.0912i","9.9169i","10.4131i","10.75i"]
 geo_bounds_misc['companyEmailsComText'] = ["10.4131i","9.9169i","10.8795i","10.75i"]
 geo_bounds_misc['companyEmailsComNum'] = ["10.8795i","9.9169i","11.0689i","10.75i"]
+geo_bounds_misc['adCirHdg'] = ["8.2337i","5.5412i","8.375i","7.3112i"]
+geo_bounds_misc['adFrame'] = ["6.2222i","5.1894i","8.5139i","7.4811i"]
+geo_bounds_misc['adCirNum'] = ["7.0571i","6.0249i","7.3025i","6.8276i"]
+geo_bounds_misc['adCirText'] = ["7.315i","6.0249i","7.5659i","6.8276i"]
+geo_bounds_misc['adPercChanged'] = ["6.9965i","7.3839i","7.2399i","8.0139i"]
+geo_bounds_misc['adComText'] = ["7.2399i","7.2938i","7.7138i","8.104i"]
+geo_bounds_misc['adComNum'] = ["7.7138i","7.3839i","7.857i","8.0139i"]
+geo_bounds_misc['propCirHdg'] = ["8.2337i","8.2079i","8.375i","9.9779i"]
+geo_bounds_misc['propFrame'] = ["6.2219i","8.00068i","8.3889i","10.1738i"]
+geo_bounds_misc['propCirNum'] = ["7.0571i","8.6915i","7.3025i","9.4943i"]
+geo_bounds_misc['propCirText'] = ["7.315i","8.6915i","7.5659i","9.4943i"]
+geo_bounds_misc['propPercChanged'] = ["6.9965i","10.0505i","7.2399i","10.6806i"]
+geo_bounds_misc['propComText'] = ["7.2399i","10.0505i","7.7138i","10.6806i"]
+geo_bounds_misc['propComNum'] = ["7.7138i","10.0505i","7.857i","10.6806i"]
 
 myDshbdTitle = myPage.TextFrames.Add()
 myDshbdTitle.GeometricBounds = geo_bounds_misc['myDshbdTitle']
@@ -589,7 +632,7 @@ total_emails_sent = grouped_combined_emails.Sent.sum()
 grouped_combined_emails['Perc_Total'] = grouped_combined_emails.Sent.apply(lambda s: int((s/total_emails_sent)*100))
 grouped_combined_emails['Label'] = grouped_combined_emails.apply(lambda row: str(row.Perc_Total) + "%\n" + row.Email_Campaign, axis=1)
 grouped_combined_emails = grouped_combined_emails.sort_values(by=['Email_Campaign'],ascending=True).reset_index(drop=True)
-figEm, axEm = plt.subplots(figsize=(4, 4), subplot_kw=dict(aspect="equal"))
+figEm, axEm = plt.subplots(figsize=(4.2, 4), subplot_kw=dict(aspect="equal"))
 wedgesEm,textsEm = axEm.pie(grouped_combined_emails['Perc_Total'].tolist(),
                         colors=co_colors,
                         labels=grouped_combined_emails['Label'].tolist(),
@@ -939,7 +982,7 @@ recent_twitter_data = recent_twitter_posts[twitter_data_columns].assign(Source='
 prev_twitter_posts = pd.read_csv(prev_twitter_csv)
 prev_twitter_data = prev_twitter_posts[twitter_data_columns].assign(Source='Twitter').rename(columns={'Tweet text':'Post_Nickname','impressions':'Impressions','url clicks':'Clicks','engagements':'Interactions'})
 
-insta_posts = pd.read_csv(instagram_csv)
+insta_posts = pd.read_csv(instagram_csv, engine='python')
 insta_posts = insta_posts.assign(Clicks=0).assign(Interactions=(insta_posts.Likes + insta_posts.Comments)).assign(Source='Instagram').rename(columns={'Reach':'Impressions'})
 insta_posts['Post_Date'] = pd.to_datetime(insta_posts['Post_Date'])
 insta_posts['Posted Month'] = insta_posts['Post_Date'].dt.month
@@ -1047,7 +1090,7 @@ instagramData.ParentStory.Contents = "Followers | "+ '{:,}'.format(count_insta_f
 instagramData.ParentStory.Characters.Item(1).appliedParagraphStyle = socialDataStyle
 
 # top performing social posts
-recent_posts_data = recent_posts_data.sort_values(by=['Clicks'],ascending=False).reset_index(drop=True)
+recent_posts_data = recent_posts_data.sort_values(by=['Interactions'],ascending=False).reset_index(drop=True)
 top_social_posts = recent_posts_data.iloc[:5].rename(columns={'Post_Nickname':'Social Post','Source':'Network'})
 top_social_posts = top_social_posts[['Social Post','Network','Impressions','Clicks','Interactions']].replace(regex=True, to_replace="'", value="").replace(regex=True, to_replace="\n", value="")
 top_social_posts['Impressions'] = top_social_posts['Impressions'].apply(lambda x: '{:,}'.format(x))
@@ -1131,7 +1174,10 @@ while '.csv' not in columbia_traffic_csv:
 greenville_traffic_csv = inputs_df.iloc[10]['CSV File Name or Numbers']
 while '.csv' not in greenville_traffic_csv:
     greenville_traffic_csv = input('Please provide the name of the CSV file, including the .csv, for the month of Greenville website data: ')
-
+hs_traffic_csv = inputs_df.iloc[11]['CSV File Name or Numbers']
+while '.csv' not in hs_traffic_csv:
+    hs_traffic_csv = input('Please provide the name of the CSV file, including the .csv, for the month of HubSpot website data: ')
+    
 chs_traffic_df = pd.read_csv(charleston_traffic_csv,skiprows=5)
 stop_chs = np.where(chs_traffic_df['Page'].isna())
 chs_traffic_df = chs_traffic_df.iloc[:(stop_chs[0])[0]]
@@ -1143,17 +1189,25 @@ stop_grv = np.where(grv_traffic_df['Page'].isna())
 grv_traffic_df = grv_traffic_df.iloc[:(stop_grv[0])[0]]
 co_traffic_df = pd.concat([chs_traffic_df,cae_traffic_df,grv_traffic_df],sort=True, ignore_index=True)
 
+hs_page_traffic = pd.read_csv(hs_traffic_csv,skiprows=5)
+stop_h = np.where(hs_page_traffic['Page'].isna())
+hs_page_traffic = hs_page_traffic.iloc[:(stop_h[0])[0]]
+
 co_page_views = co_traffic_df[['Page','Source / Medium','Pageviews']]
 co_page_views.Pageviews = pd.to_numeric(co_page_views.Pageviews,downcast='integer')
-co_page_views_totals = co_page_views.Pageviews.sum()
+hs_page_views = hs_page_traffic[['Page','Source / Medium','Pageviews']]
+hs_page_views.Pageviews = pd.to_numeric(hs_page_views.Pageviews,downcast='integer')
+co_page_views_totals = co_page_views.Pageviews.sum() + hs_page_views.Pageviews.sum()
 total_page_views = '{:,}'.format(co_page_views_totals)
 
-co_web_sources = co_page_views[['Page','Source / Medium','Pageviews']]
+co_web_sources = pd.concat([co_page_views,hs_page_views],sort=True, ignore_index=True)
+co_web_sources['Source / Medium'] = co_web_sources['Source / Medium'].replace('linkedin.com / referral','linkedin.com / social post').replace('m.facebook.com / referral','m.facebook.com / social post').replace('lnkd.in / referral','lnkd.in / social post').replace('facebook.com / referral','facebook.com / social post')
 co_web_sources = co_web_sources.assign(Source=co_web_sources['Source / Medium'].apply(lambda s: s.split('/ ')[1]))
 co_web_sources['Source'] = co_web_sources['Source'].replace('(none)','direct').replace('(not set)','referral').replace('social post','social')
 co_web_sources_group = co_web_sources.groupby('Source').Pageviews.sum().reset_index()
 co_web_sources_group.Source = co_web_sources_group.Source.str.capitalize()
 co_web_sources_group['Percentage'] = co_web_sources_group.Pageviews.apply(lambda x: str(int(100*x/co_page_views_totals))).reset_index(drop=True)
+co_web_sources_group = co_web_sources_group[co_web_sources_group.Percentage != '0']
 co_web_sources_group['Label'] = co_web_sources_group.apply(lambda row: row.Percentage + "%\n" + row.Source, axis=1)
 sessions_count = co_web_sources_group['Pageviews'].tolist()
 channel_labels = co_web_sources_group['Label'].tolist()
@@ -1188,7 +1242,7 @@ websiteCirText.ParentStory.Contents = recent_mo + "\nTotal Website Visits"
 websiteCirText.ParentStory.Characters.Item(1).appliedParagraphStyle = circleTextStyle
 
 # website visits by campaign
-sessions_by_campaigns_csv = inputs_df.iloc[11]['CSV File Name or Numbers']
+sessions_by_campaigns_csv = inputs_df.iloc[12]['CSV File Name or Numbers']
 while '.csv' not in sessions_by_campaigns_csv:
     sessions_by_campaigns_csv = input('Please provide the name of the CSV file, including the .csv, for the month of sessions data: ')
 
@@ -1198,8 +1252,9 @@ campaign_sessions_df = campaign_sessions_df[(campaign_sessions_df.Name.isnull() 
 campaign_sessions_df['Total Visits'] = campaign_sessions_df.apply(lambda row: int(sum(row[1:])),axis=1)
 campaign_visits = campaign_sessions_df[['Name','Total Visits']].reset_index(drop=True)
 campaign_visits = campaign_visits.replace(regex=True, to_replace="Columbia |Greenville |Charleston", value="").reset_index(drop=True)
+campaign_visits['Name'] = campaign_visits.Name.replace(regex=True, to_replace="\d+", value="").apply(lambda n: n.split(' - ')[0])
 campaign_visits_group = campaign_visits.groupby('Name')['Total Visits'].sum().reset_index()
-campaign_visits_group = campaign_visits_group[(campaign_visits_group.Name != 'REMS Property Newsletters') & (campaign_visits_group.Name != 'Internal Newsletters 2018') & (campaign_visits_group['Total Visits'] != 0)].sort_values(by=['Total Visits'],ascending=False).reset_index(drop=True)
+campaign_visits_group = campaign_visits_group[(campaign_visits_group.Name != 'REMS Property Newsletters') & (campaign_visits_group.Name.str.contains('Internal') == False) & (campaign_visits_group.Name.str.contains('Sample') == False) & (campaign_visits_group['Total Visits'] != 0)].sort_values(by=['Total Visits'],ascending=False).reset_index(drop=True)
 campaign_visits_group['Total Visits'] = campaign_visits_group['Total Visits'].apply(lambda x: '{:,}'.format(x))
 campaign_visits_list = df_to_list(campaign_visits_group)
 
@@ -1233,8 +1288,14 @@ co_page_types = co_page_views[['Page','Pageviews']]
 co_page_types.Page = co_page_types.Page.str.lower()
 co_page_types = co_page_types.replace(regex=True, to_replace="/en", value="").replace(regex=True, to_replace="/united-states", value="").reset_index(drop=True)
 co_page_types['Page Type'] = co_page_types['Page'].apply(lambda p: p.split('/')[1]).apply(lambda p: p.capitalize())
-co_page_groups = co_page_types.groupby('Page Type').Pageviews.sum().reset_index()
-co_page_groups = co_page_groups[co_page_groups['Page Type'].str.contains('cache') == False].sort_values(by=['Pageviews'],ascending=False).reset_index(drop=True)
+
+hs_page_types = hs_page_views[['Page','Pageviews']]
+hs_page_types.Page = hs_page_types.Page.str.lower()
+hs_page_types['Page Type'] = hs_page_types['Page'].apply(hs_page_type)
+
+all_page_types = pd.concat([co_page_types,hs_page_types],sort=True, ignore_index=True)
+co_page_groups = all_page_types.groupby('Page Type').Pageviews.sum().reset_index()
+co_page_groups = co_page_groups[(co_page_groups['Page Type'].str.contains('cache') == False) & (co_page_groups['Page Type'].str.contains('_hcms') == False) & (co_page_groups['Page Type'].str.contains('translate') == False) & (co_page_groups['Page Type'].str.contains('edit') == False)].sort_values(by=['Pageviews'],ascending=False).reset_index(drop=True)
 co_page_groups.Pageviews = co_page_groups.Pageviews.apply(lambda x: '{:,}'.format(x))
 co_page_groups_list = df_to_list(co_page_groups)
 
@@ -1296,14 +1357,15 @@ mktgSubH.ParentStory.Contents = "Marketing Initiatives"
 mktgSubH.ParentStory.Characters.Item(1).appliedParagraphStyle = subheadingStyle
 
 # we're going to do these as a loop as well, so let's start with preliminary calculations
-ytd_prs = int(inputs_df.iloc[14]['CSV File Name or Numbers'])
-prev_ytd_prs = int(inputs_df.iloc[15]['CSV File Name or Numbers'])
+ytd_prs = int(inputs_df.iloc[15]['CSV File Name or Numbers'])
+prev_ytd_prs = int(inputs_df.iloc[16]['CSV File Name or Numbers'])
 
-qtrly_emails_csv = inputs_df.iloc[16]['CSV File Name or Numbers']
+qtrly_emails_csv = inputs_df.iloc[0]['CSV File Name or Numbers']
 while '.csv' not in qtrly_emails_csv:
     qtrly_emails_csv = input('Please provide the name of the CSV file, including the .csv, for the email data being compared: ')
 mr_emails_df = pd.read_csv(qtrly_emails_csv)
 mr_emails_df = mr_emails_df[mr_emails_df['Campaign'].str.contains('Market Reports')==True].reset_index(drop=True)
+mr_emails_df = mr_emails_df[mr_emails_df['Email Name'].str.startswith('20')==True].reset_index(drop=True)
 mr_emails_df['Year'] = mr_emails_df['Email Name'].apply(lambda x: int(x.split()[0]))
 mr_emails_df['Quarter'] = mr_emails_df['Email Name'].apply(lambda x: x.split()[1])
 mr_emails_group = mr_emails_df.groupby(['Year','Quarter'])['Sent'].sum().reset_index()
@@ -1369,38 +1431,6 @@ init_graphics['reports']['compared_text'] = '\n' + prev_qtr
 init_graphics['reports']['comText'] = ["7.2399i","4.7172i","7.7138i","5.3472i"]
 init_graphics['reports']['compared_data'] = '{:,}'.format(prev_mr_recipients)
 init_graphics['reports']['comNum'] = ["7.7138i","4.7172i","7.857i","5.3472i"]
-init_graphics['ads'] = {}
-init_graphics['ads']['name'] = 'Advertising'
-init_graphics['ads']['cirHdg'] = ["8.2337i","5.5412i","8.375i","7.3112i"]
-init_graphics['ads']['eps_file'] = 'ad-views.eps'
-init_graphics['ads']['frame'] = ["6.2222i","5.1894i","8.5139i","7.4811i"]
-init_graphics['ads']['circle_data'] = ('{:,}'.format(current_loopnet_views))
-init_graphics['ads']['cirNum'] = ["7.0571i","6.0249i","7.3025i","6.8276i"]
-init_graphics['ads']['circle_text'] = 'LoopNet Ad Views'
-init_graphics['ads']['cirText'] = ["7.315i","6.0249i","7.5659i","6.8276i"]
-init_graphics['ads']['change'] = (int(((current_loopnet_views - prev_loopnet_views)/prev_loopnet_views)*100))
-init_graphics['ads']['arrow'] = ["6.6423i","7.6989i","6.9001i","7.6989i"]
-init_graphics['ads']['percChanged'] = ["6.9965i","7.3839i","7.2399i","8.0139i"]
-init_graphics['ads']['compared_text'] = prev_mo + ' Ad Views'
-init_graphics['ads']['comText'] = ["7.2399i","7.3839i","7.7138i","8.0139i"]
-init_graphics['ads']['compared_data'] = ('{:,}'.format(prev_loopnet_views))
-init_graphics['ads']['comNum'] = ["7.7138i","7.3839i","7.857i","8.0139i"]
-init_graphics['proposals'] = {}
-init_graphics['proposals']['name'] = 'Proposals'
-init_graphics['proposals']['cirHdg'] = ["8.2337i","8.2079i","8.375i","9.9779i"]
-init_graphics['proposals']['eps_file'] = 'proposals.eps'
-init_graphics['proposals']['frame'] = ["6.2222i","7.8581i","8.5139i","10.1498i"]
-init_graphics['proposals']['circle_data'] = (str(ytd_proposals))
-init_graphics['proposals']['cirNum'] = ["7.0571i","8.6915i","7.3025i","9.4943i"]
-init_graphics['proposals']['circle_text'] = 'YTD Submitted'
-init_graphics['proposals']['cirText'] = ["7.315i","8.6915i","7.5659i","9.4943i"]
-init_graphics['proposals']['change'] = (int(((ytd_proposals - prev_ytd_proposals)/prev_ytd_proposals)*100))
-init_graphics['proposals']['arrow'] = ["6.6423i","10.3656i","6.9001i","10.3656i"]
-init_graphics['proposals']['percChanged'] = ["6.9965i","10.0505i","7.2399i","10.6806i"]
-init_graphics['proposals']['compared_text'] = 'YTD 2017'
-init_graphics['proposals']['comText'] = ["7.2399i","10.0505i","7.7138i","10.6806i"]
-init_graphics['proposals']['compared_data'] = (str(prev_ytd_proposals))
-init_graphics['proposals']['comNum'] = ["7.7138i","10.0505i","7.857i","10.6806i"]
 
 # now the loop
 for init_graphic in init_graphics.values():
@@ -1457,3 +1487,127 @@ for init_graphic in init_graphics.values():
   comNum.GeometricBounds = init_graphic['comNum']
   comNum.ParentStory.Contents = init_graphic['compared_data']
   comNum.ParentStory.Characters.Item(1).appliedParagraphStyle = comparedNumberStyle
+
+  # now for advertising
+recent_facebook_posts['Lifetime Post Paid Impressions'] = pd.to_numeric(recent_facebook_posts['Lifetime Post Paid Impressions'],downcast='integer').reset_index(drop=True)
+recent_facebook_posts['Interactions'] = pd.to_numeric(recent_facebook_posts['Interactions'],downcast='integer').reset_index(drop=True)
+recent_facebook_ads = recent_facebook_posts[recent_facebook_posts['Lifetime Post Paid Impressions']>0].reset_index(drop=True)
+facebook_ad_columns = ['Post ID','Lifetime Post Paid Impressions','Interactions']
+recent_facebook_ads = recent_facebook_ads[facebook_ad_columns].rename(columns={'Lifetime Post Paid Impressions':'Impressions'}).reset_index(drop=True)
+total_ad_impressions = recent_facebook_ads.Impressions.sum()
+total_ad_interactions = recent_facebook_ads.Interactions.sum()
+try:
+    ad_interactions_perc = int((total_ad_interactions/total_ad_impressions)*100)
+except ValueError:
+    ad_interactions_perc = 0
+figAd,axAd = plt.subplots(figsize=(2.3,2.3), subplot_kw=dict(aspect="equal"))
+axAd.add_artist(perc_change_wedge((.5,.5),0.425,ad_interactions_perc))
+axAd.add_artist(white_circle((.5,.5),0.33))
+axAd.add_artist(blue_circle((.5,.5),0.32))
+plt.axis('off')
+plt.tight_layout()
+figAd.savefig('ad-views.eps',transparent=True)
+adEPS = cwd + '\\ad-views.eps'
+
+adFrame = myPage.Rectangles.Add()
+adFrame.GeometricBounds = geo_bounds_misc['adFrame']
+adFrame.StrokeColor = strokeNone
+adFrame.FrameFittingOptions.FittingOnEmptyFrame = myEmptyFitProp
+adGraphic = adFrame.Place(adEPS)
+
+adCirNum = myPage.TextFrames.Add()
+adCirNum.GeometricBounds = geo_bounds_misc['adCirNum']
+adCirNum.ParentStory.Contents = '{:,}'.format(total_ad_impressions)
+adCirNum.ParentStory.Characters.Item(1).appliedParagraphStyle = circleNumbersStyle
+
+adCirText = myPage.TextFrames.Add()
+adCirText.GeometricBounds = geo_bounds_misc['adCirText']
+adCirText.ParentStory.Contents = 'Total Ad Impressions'
+adCirText.ParentStory.Characters.Item(1).appliedParagraphStyle = circleTextStyle
+
+adCirHdg = myPage.TextFrames.Add()
+adCirHdg.GeometricBounds = geo_bounds_misc['adCirHdg']
+adCirHdg.ParentStory.Contents = 'Advertising'
+adCirHdg.ParentStory.Characters.Item(1).appliedParagraphStyle = circleHeadingStyle
+
+adPercChanged = myPage.TextFrames.Add()
+adPercChanged.GeometricBounds = geo_bounds_misc['adPercChanged']
+adPercChanged.ParentStory.Contents = str(ad_interactions_perc) + '%'
+adPercChanged.ParentStory.Characters.Item(1).appliedParagraphStyle = percentChangedStyle
+
+adComText = myPage.TextFrames.Add()
+adComText.GeometricBounds = geo_bounds_misc['adComText']
+adComText.ParentStory.Contents = 'Interactions from Impressions'
+adComText.ParentStory.Characters.Item(1).appliedParagraphStyle = dataTextStyle
+
+adComNum = myPage.TextFrames.Add()
+adComNum.GeometricBounds = geo_bounds_misc['adComNum']
+adComNum.ParentStory.Contents = '{:,}'.format(total_ad_interactions) + ' Total'
+adComNum.ParentStory.Characters.Item(1).appliedParagraphStyle = comparedNumberStyle
+
+# finally, proposals
+current_proposals_csv = inputs_df.iloc[17]['CSV File Name or Numbers']
+while '.csv' not in current_proposals_csv:
+    current_proposals_csv = input('Please provide the name of the CSV file, including the .csv, for this year\'s tracking report: ')
+current_proposals_df = pd.read_csv(current_proposals_csv)
+current_proposals_df = current_proposals_df.assign(Outcome=current_proposals_df.apply(proposal_outcome,axis=1))
+grouped_proposals = current_proposals_df.groupby('Outcome')['Property/Proposal Name'].count().reset_index().rename(columns={'Property/Proposal Name':'Proposals'})
+total_proposals = grouped_proposals.Proposals.sum()
+grouped_proposals['Percentage'] = grouped_proposals['Proposals'].apply(lambda x: str(int(100*x/total_proposals))).reset_index(drop=True)
+grouped_proposals['Label'] = grouped_proposals.apply(lambda row: row.Percentage + "%\n" + row.Outcome, axis=1)
+proposals_count = grouped_proposals['Proposals'].tolist()
+outcome_labels = grouped_proposals['Label'].tolist()
+figProp, axProp = plt.subplots(figsize=(2.2,2.2), subplot_kw=dict(aspect="equal"))
+wedgesProp,textsProp = axProp.pie(grouped_proposals['Proposals'].tolist(),
+                        colors=colliers_colors,
+                        labels=grouped_proposals['Label'].tolist(),
+                        labeldistance=1.23,
+                        startangle=90,
+                        wedgeprops=dict(width=0.25,linewidth=2,edgecolor='w'))
+for t in textsProp:
+    t.set_horizontalalignment('center')
+axProp.add_artist(blue_circle((0,0),0.7))
+plt.tight_layout()
+figProp.savefig('proposals.eps',transparent=True)
+proposalsEPS = cwd + '\\proposals.eps'
+
+lost_proposals = outcomes_output('Lost')
+outstanding_proposals = outcomes_output('Outstanding')
+#pulled_proposals = outcomes_output('Pulled')
+won_proposals = outcomes_output('Won')
+
+propFrame = myPage.Rectangles.Add()
+propFrame.GeometricBounds = geo_bounds_misc['propFrame']
+propFrame.StrokeColor = strokeNone
+propFrame.FrameFittingOptions.FittingOnEmptyFrame = myEmptyFitProp
+propGraphic = propFrame.Place(proposalsEPS)
+
+propCirNum = myPage.TextFrames.Add()
+propCirNum.GeometricBounds = geo_bounds_misc['propCirNum']
+propCirNum.ParentStory.Contents = str(won_proposals)
+propCirNum.ParentStory.Characters.Item(1).appliedParagraphStyle = circleNumbersStyle
+
+propCirText = myPage.TextFrames.Add()
+propCirText.GeometricBounds = geo_bounds_misc['propCirText']
+propCirText.ParentStory.Contents = 'Proposals Won YTD'
+propCirText.ParentStory.Characters.Item(1).appliedParagraphStyle = circleTextStyle
+
+propCirHdg = myPage.TextFrames.Add()
+propCirHdg.GeometricBounds = geo_bounds_misc['propCirHdg']
+propCirHdg.ParentStory.Contents = 'Proposals'
+propCirHdg.ParentStory.Characters.Item(1).appliedParagraphStyle = circleHeadingStyle
+
+propPercChanged = myPage.TextFrames.Add()
+propPercChanged.GeometricBounds = geo_bounds_misc['propPercChanged']
+propPercChanged.ParentStory.Contents = 'YTD'
+propPercChanged.ParentStory.Characters.Item(1).appliedParagraphStyle = percentChangedStyle
+
+propComText = myPage.TextFrames.Add()
+propComText.GeometricBounds = geo_bounds_misc['propComText']
+propComText.ParentStory.Contents = str(lost_proposals) + ' Lost\n' + str(outstanding_proposals) + ' Out-\nstanding'
+propComText.ParentStory.Characters.Item(1).appliedParagraphStyle = dataTextStyle
+
+propComNum = myPage.TextFrames.Add()
+propComNum.GeometricBounds = geo_bounds_misc['propComNum']
+propComNum.ParentStory.Contents = '{:,}'.format(total_proposals) + ' Total'
+propComNum.ParentStory.Characters.Item(1).appliedParagraphStyle = comparedNumberStyle
